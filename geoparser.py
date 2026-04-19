@@ -95,7 +95,7 @@ if __name__ == "__main__":
     test_sentences = [
         "Which of the following saw the highest average temperature in January, Maharashtra, Ahmedabad or entire New Zealand?",
         "Show me a graph of rainfall for Chennai for the month of October",
-        "Compare population of Indya and Pakstan",      
+        "Compare population of Indya and  AUSttrlya",      
         "What is the area of Rajasthan and Gujrat?",    
         "Give me weather data for New York and Londan",  
     ]
