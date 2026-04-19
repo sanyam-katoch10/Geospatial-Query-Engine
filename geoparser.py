@@ -1,34 +1,28 @@
-import nltk
+import spacy
 from rapidfuzz import process, fuzz
 from places_db import ALL_TABLES
+
+nlp = spacy.load("en_core_web_sm")
 
 MATCH_THRESHOLD = 72
 
 
 def extract_candidates_nlp(sentence):
-    tokens = nltk.word_tokenize(sentence)
-    pos_tags = nltk.pos_tag(tokens)
-    ne_tree = nltk.ne_chunk(pos_tags, binary=False)
+    doc = nlp(sentence)
+
     candidates = []
-    for subtree in ne_tree:
-        if isinstance(subtree, nltk.Tree):
-            entity_type = subtree.label()
-           
-            if entity_type in ("GPE", "LOCATION", "FACILITY"):
-           
-                entity_text = " ".join(word for word, tag in subtree.leaves())
-                candidates.append(entity_text)
 
-    import re
-    for token in tokens:
-        if re.match(r'^[A-Z][a-zA-Z\-]{2,}$', token):
-            if token not in candidates and token.lower() not in {"The", "A", "An", "In", "On", "At",
-                "Which", "What", "Show", "Give", "Find", "Compare", "List", "January", "February",
-                "March", "April", "May", "June", "July", "August", "September", "October",
-                "November", "December"}:
-                candidates.append(token)
+    for ent in doc.ents:
+        if ent.label_ in ["GPE", "LOC"]:
+            candidates.append(ent.text)
 
-   
+    # fallback for capitalized words spaCy missed
+    for token in doc:
+        if token.text[0].isupper() and token.text.isalpha():
+            if token.text not in candidates:
+                candidates.append(token.text)
+
+    # remove duplicates
     seen = set()
     unique = []
 
@@ -36,23 +30,9 @@ def extract_candidates_nlp(sentence):
         if c.lower() not in seen:
             seen.add(c.lower())
             unique.append(c)
-    final_candidates = []
 
-    for candidate in unique:
-        is_subword = False
+    return unique
 
-        for other in unique:
-            if candidate != other:
-                words = other.lower().split()
-
-                if candidate.lower() in words and len(words) > 1:
-                    is_subword = True
-                    break
-
-        if not is_subword:
-            final_candidates.append(candidate)
-
-    return final_candidates
 
 def fuzzy_match_token(token):
     best_match = None
@@ -66,6 +46,7 @@ def fuzzy_match_token(token):
             scorer=fuzz.WRatio,
             score_cutoff=MATCH_THRESHOLD
         )
+
         if result and result[1] > best_score:
             best_match = result[0]
             best_score = result[1]
@@ -78,22 +59,24 @@ def fuzzy_match_token(token):
             "table": best_table,
             "confidence": round(best_score, 1)
         }
+
     return None
 
 
 def parse_geonames(sentence):
     candidates = extract_candidates_nlp(sentence)
+
     results = []
-    seen_canonicals = set()
+    seen = set()
 
     for candidate in candidates:
         match = fuzzy_match_token(candidate)
-        if match and match["canonical_name"] not in seen_canonicals:
+
+        if match and match["canonical_name"] not in seen:
             results.append(match)
-            seen_canonicals.add(match["canonical_name"])
+            seen.add(match["canonical_name"])
 
     return results
-
 
 if __name__ == "__main__":
     test_sentences = [
