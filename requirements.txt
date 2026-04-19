@@ -1,0 +1,4 @@
+flask
+rapidfuzz
+nltk
+numpy
