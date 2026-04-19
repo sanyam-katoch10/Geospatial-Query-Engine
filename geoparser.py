@@ -16,13 +16,20 @@ def extract_candidates_nlp(sentence):
         if ent.label_ in ["GPE", "LOC"]:
             candidates.append(ent.text)
 
-    # fallback for capitalized words spaCy missed
+    
     for token in doc:
-        if token.text[0].isupper() and token.text.isalpha():
-            if token.text not in candidates:
+        if token.pos_ == "PROPN" and token.text.strip():
+
+            part_of_existing = False
+
+            for existing in candidates:
+                if token.text.lower() in existing.lower().split():
+                    part_of_existing = True
+                    break
+
+            if not part_of_existing and token.text not in candidates:
                 candidates.append(token.text)
 
-    # remove duplicates
     seen = set()
     unique = []
 
@@ -31,7 +38,24 @@ def extract_candidates_nlp(sentence):
             seen.add(c.lower())
             unique.append(c)
 
-    return unique
+ 
+    final_candidates = []
+
+    for candidate in unique:
+        is_subword = False
+
+        for other in unique:
+            if candidate != other:
+                words = other.lower().split()
+
+                if len(words) > 1 and candidate.lower() in words:
+                    is_subword = True
+                    break
+
+        if not is_subword:
+            final_candidates.append(candidate)
+
+    return final_candidates
 
 
 def fuzzy_match_token(token):
@@ -82,7 +106,7 @@ if __name__ == "__main__":
     test_sentences = [
         "Which of the following saw the highest average temperature in January, Maharashtra, Ahmedabad or entire New Zealand?",
         "Show me a graph of rainfall for Chennai for the month of October",
-        "Compare population of Indya and AUSttrlya",      
+        "Compare population of Indya and Austrla",      
         "What is the area of Rajasthan and Gujrat?",    
         "Give me weather data for New York and Londan",  
     ]
