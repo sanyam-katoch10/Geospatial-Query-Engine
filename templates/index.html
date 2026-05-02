@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geospatial Query Engine</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #fff;
+            color: #1a1a1a;
+        }
+
+        .page-wrapper {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 900px) {
+            .page-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sidebar {
+            padding: 24px 20px;
+            background: #fafbfc;
+            overflow-y: auto;
+            border-right: 1px solid #e1e4e8;
+        }
+
+        h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: #111;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 18px;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 8px;
+            font-weight: 600;
+            background: #e6f4ea;
+            color: #1e7e34;
+            margin-right: 4px;
+        }
+
+        textarea {
+            width: 100%;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 13px;
+            min-height: 70px;
+            resize: vertical;
+            background: #fff;
+            line-height: 1.5;
+            font-family: inherit;
+            color: #1a1a1a;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #0969da;
+            box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
+        }
+
+        .examples {
+            margin: 10px 0 12px;
+        }
+
+        .examples p {
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .chip {
+            font-size: 11px;
+            padding: 4px 9px;
+            border: 1px solid #d0d7de;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #555;
+            background: #fff;
+        }
+
+        .chip:hover {
+            border-color: #0969da;
+            color: #0969da;
+            background: #f0f7ff;
+        }
+
+        .btn {
+            background: #0969da;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .btn:hover {
+            background: #0860ca;
+        }
+
+        .loading {
+            text-align: center;
+            color: #999;
+            font-size: 11px;
+            margin: 6px 0;
+            display: none;
+        }
+
+        .results {
+            margin-top: 12px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .results::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .results::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 2px;
+        }
+
+        .results-header {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .result-item {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+
+        .result-item:hover {
+            border-color: #0969da;
+        }
+
+        .token-text {
+            font-weight: 600;
+            min-width: 75px;
+            color: #111;
+        }
+
+        .arrow {
+            color: #ccc;
+            font-size: 10px;
+        }
+
+        .canonical {
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            flex: 1;
+            color: #555;
+        }
+
+        .coords-text {
+            font-size: 9px;
+            color: #aaa;
+        }
+
+        .table-badge {
+            font-size: 9px;
+            padding: 2px 7px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+
+        .Country {
+            background: #eddbff;
+            color: #6b21a8;
+        }
+
+        .State {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .City {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .no-match {
+            text-align: center;
+            padding: 14px;
+            color: #999;
+            font-size: 12px;
+            background: #fafafa;
+            border-radius: 6px;
+        }
+
+        .alerts-section {
+            margin-top: 12px;
+            border-top: 1px solid #e1e4e8;
+            padding-top: 10px;
+        }
+
+        .alerts-header {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .alerts-header .toggle {
+            font-size: 9px;
+            color: #999;
+        }
+
+        .alerts-list {
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .alerts-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .alerts-list::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 2px;
+        }
+
+        .alert-item {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-left: 3px solid #dc3545;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .alert-item.earthquake {
+            border-left-color: #dc3545;
+        }
+
+        .alert-item.fire {
+            border-left-color: #fd7e14;
+        }
+
+        .alert-item.storm {
+            border-left-color: #0dcaf0;
+        }
+
+        .alert-item.volcano {
+            border-left-color: #6f42c1;
+        }
+
+        .alert-item.other {
+            border-left-color: #6c757d;
+        }
+
+        .alert-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 1px;
+        }
+
+        .alert-meta {
+            color: #999;
+            font-size: 9px;
+        }
+
+        .alert-meta span {
+            margin-right: 8px;
+        }
+
+        .no-alerts {
+            font-size: 11px;
+            color: #aaa;
+            padding: 8px 0;
+            text-align: center;
+        }
+
+        .info-box {
+            margin-top: 14px;
+            padding: 10px;
+            background: #f0f4f8;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .info-box strong {
+            color: #444;
+        }
+
+        .map-section {
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 2px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .map-btn {
+            background: #fff;
+            border: none;
+            border-right: 1px solid #e1e4e8;
+            padding: 6px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .map-btn:last-child {
+            border-right: none;
+        }
+
+        .map-btn.active {
+            background: #0969da;
+            color: #fff;
+        }
+
+        .map-btn:hover:not(.active) {
+            background: #f6f8fa;
+        }
+
+
+        .marker-pin {
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+        }
+
+        .marker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1.5px solid #fff;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+        }
+
+
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, .6)
+            }
+
+            70% {
+                box-shadow: 0 0 0 18px rgba(220, 53, 69, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0)
+            }
+        }
+
+        @keyframes pulse-orange {
+            0% {
+                box-shadow: 0 0 0 0 rgba(253, 126, 20, .6)
+            }
+
+            70% {
+                box-shadow: 0 0 0 14px rgba(253, 126, 20, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(253, 126, 20, 0)
+            }
+        }
+
+        @keyframes pulse-yellow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, .6)
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 193, 7, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0)
+            }
+        }
+
+        .weather-alert-dot {
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .weather-alert-dot.sev-red {
+            background: #dc3545;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        .weather-alert-dot.sev-orange {
+            background: #fd7e14;
+            animation: pulse-orange 2s infinite;
+        }
+
+        .weather-alert-dot.sev-yellow {
+            background: #ffc107;
+            animation: pulse-yellow 2.5s infinite;
+        }
+
+
+        .weather-section {
+            margin-top: 12px;
+            border-top: 1px solid #e1e4e8;
+            padding-top: 10px;
+        }
+
+        .weather-header {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .weather-header .toggle {
+            font-size: 9px;
+            color: #999;
+        }
+
+        .weather-list {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .weather-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .weather-list::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 2px;
+        }
+
+        .wx-alert-item {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .wx-alert-item.sev-red {
+            border-left: 4px solid #dc3545;
+            background: #fff5f5;
+        }
+
+        .wx-alert-item.sev-orange {
+            border-left: 4px solid #fd7e14;
+            background: #fff8f0;
+        }
+
+        .wx-alert-item.sev-yellow {
+            border-left: 4px solid #ffc107;
+            background: #fffdf0;
+        }
+
+        .wx-alert-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .wx-alert-desc {
+            color: #666;
+            font-size: 10px;
+            margin-top: 1px;
+        }
+
+        .wx-alert-place {
+            color: #999;
+            font-size: 9px;
+        }
+
+        .sev-badge {
+            display: inline-block;
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+            color: #fff;
+            margin-right: 4px;
+        }
+
+        .sev-badge.red {
+            background: #dc3545;
+        }
+
+        .sev-badge.orange {
+            background: #fd7e14;
+        }
+
+        .sev-badge.yellow {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .wx-station {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+            padding: 5px 8px;
+            margin-bottom: 3px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wx-station .temp {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .wx-station .city {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .wx-station .desc {
+            color: #888;
+            font-size: 9px;
+        }
+
+        .india-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff9933, #fff, #138808);
+            padding: 1px 8px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #333;
+            margin-left: 4px;
+        }
+
+        .wx-no-alerts {
+            font-size: 11px;
+            color: #16a34a;
+            padding: 8px;
+            text-align: center;
+            background: #f0fdf4;
+            border-radius: 4px;
+        }
+
+
+        .zoom-toast {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .zoom-toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-wrapper">
+        <div class="sidebar">
+            <h1>Geospatial Query Engine</h1>
+            <p class="subtitle">
+                <span class="badge">SIH 1517</span>
+                Extract places from natural language
+            </p>
+
+            <textarea id="sentence"
+                placeholder="Type a sentence...">Which of the following saw the highest average temperature in January, Maharashtra, Ahmedabad or entire New-Zealand?</textarea>
+
+            <div class="examples">
+                <p>Try examples</p>
+                <div class="chips">
+                    <span class="chip" onclick="setEx(this)">Rainfall in Chenai</span>
+                    <span class="chip" onclick="setEx(this)">Indya vs Austrla</span>
+                    <span class="chip" onclick="setEx(this)">Area of Rajsthan and Gujrat</span>
+                    <span class="chip" onclick="setEx(this)">Weather in New Yrok and Londan</span>
+                    <span class="chip" onclick="setEx(this)">Compare Shimla vs Gantok wether</span>
+                    <span class="chip" onclick="setEx(this)">Temp in Califronia and Tokoyo</span>
+                    <span class="chip" onclick="setEx(this)">Rain in Mumbai and Dheli</span>
+                    <span class="chip" onclick="setEx(this)">Area of Maharastra and Gujrat</span>
+                    <span class="chip" onclick="setEx(this)">Manpur vs Bangalore pop</span>
+                    <span class="chip" onclick="setEx(this)">Temp trends in New Zealnd and Austrla</span>
+                    <span class="chip" onclick="setEx(this)">Rainfall in Kolketa last month</span>
+                    <span class="chip" onclick="setEx(this)">Density in Tokyo and New York</span>
+                    <span class="chip" onclick="setEx(this)">temp in Uttar Prdesh</span>
+                    <span class="chip" onclick="setEx(this)">Rain in Kerela and Tamli Nadu</span>
+                    <span class="chip" onclick="setEx(this)">Area of Rajasthan vs Madhta Paresdh</span>
+                    <span class="chip" onclick="setEx(this)">Pop growth in Ahemdbad and Jam kashir in last 5yr</span>
+                    <span class="chip" onclick="setEx(this)">Avg rain in Karnataka</span>
+                </div>
+            </div>
+
+            <button class="btn" onclick="parse()">Parse Places</button>
+            <div class="loading" id="loading">Parsing...</div>
+
+            <div class="results" id="results"></div>
+
+            <div class="alerts-section" id="alertsSection" style="display: none;">
+                <div class="alerts-header" onclick="toggleAlerts()">
+                    🛰️ Satellite Alerts <span class="toggle" id="alertsToggle">▼</span>
+                </div>
+                <div id="alertsContent">
+                    <div class="alerts-list" id="alertsList"></div>
+                </div>
+            </div>
+
+            <div class="weather-section" id="weatherSection" style="display:none;">
+                <div class="weather-header" onclick="toggleWeather()">
+                    🌦️ Real-Time Weather Alerts <span class="toggle" id="weatherToggle">▼</span>
+                </div>
+                <div id="weatherContent">
+                    <div class="weather-list" id="weatherList"></div>
+                </div>
+            </div>
+
+            <div class="weather-section" id="indiaSection" style="display:none;">
+                <div class="weather-header" onclick="toggleIndia()">
+                    Nearby Weather Stations <span class="india-badge" id="indiaBadge" style="display:none">INDIA</span>
+                    <span class="toggle" id="indiaToggle">▼</span>
+                </div>
+                <div id="indiaContent">
+                    <div class="weather-list" id="indiaList"></div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>How it works:</strong> Extracts place names using spaCy NLP, fuzzy matches
+                against a canonical database, and plots on the map. Fetches real-time weather
+                alerts (Open-Meteo) + satellite alerts (NASA EONET + USGS).
+                <br><strong>🔴 Red Alert</strong> = Danger &nbsp; <strong style="color:#fd7e14">🟠 Orange</strong> =
+                Warning &nbsp; <strong style="color:#ffc107">🟡 Yellow</strong> = Watch
+            </div>
+        </div>
+
+        <div class="map-section">
+            <div class="map-controls">
+                <button class="map-btn active" id="btnStreet" onclick="setMapLayer('street')">Map</button>
+                <button class="map-btn" id="btnSatellite" onclick="setMapLayer('satellite')">Satellite</button>
+            </div>
+            <div id="map"></div>
+            <div class="zoom-toast" id="zoomToast"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        let map = L.map('map', { zoomControl: true }).setView([20, 78], 4);
+        let markers = [];
+        let alertMarkers = [];
+        let weatherMarkers = [];
+        let indiaMarkers = [];
+
+        let streetLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['0', '1', '2', '3'],
+            updateWhenIdle: false,
+            updateWhenZooming: false,
+            attribution: 'Map data &copy; Google'
+        });
+
+        let satelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['0', '1', '2', '3'],
+            updateWhenIdle: false,
+            updateWhenZooming: false,
+            attribution: 'Imagery &copy; Google'
+        });
+
+        streetLayer.addTo(map);
+        let currentLayer = 'street';
+
+        function setMapLayer(type) {
+            if (type === 'satellite' && currentLayer !== 'satellite') {
+                map.removeLayer(streetLayer);
+                satelliteLayer.addTo(map);
+                currentLayer = 'satellite';
+                document.getElementById('btnSatellite').classList.add('active');
+                document.getElementById('btnStreet').classList.remove('active');
+            } else if (type === 'street' && currentLayer !== 'street') {
+                map.removeLayer(satelliteLayer);
+                streetLayer.addTo(map);
+                currentLayer = 'street';
+                document.getElementById('btnStreet').classList.add('active');
+                document.getElementById('btnSatellite').classList.remove('active');
+            }
+        }
+
+        const placeColors = { 'Country': '#7c3aed', 'State': '#16a34a', 'City': '#ea580c' };
+
+        const zoomLevels = { 'Country': 5, 'State': 7, 'City': 13 };
+
+        function createPinIcon(color, size) {
+            return L.divIcon({
+                html: `<div style="
+            width: ${size}px; height: ${size}px;
+            background: ${color};
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        "></div>`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size],
+                popupAnchor: [0, -size],
+                className: ''
+            });
+        }
+
+        function createAlertIcon(color) {
+            return L.divIcon({
+                html: `<div style="
+            width: 8px; height: 8px;
+            background: ${color};
+            border-radius: 50%;
+            border: 1.5px solid #fff;
+            box-shadow: 0 0 6px ${color}80;
+        "></div>`,
+                iconSize: [8, 8], iconAnchor: [4, 4], className: ''
+            });
+        }
+
+        function getAlertColor(cat) {
+            cat = cat.toLowerCase();
+            if (cat.includes('earthquake')) return '#dc3545';
+            if (cat.includes('fire') || cat.includes('wildfire')) return '#fd7e14';
+            if (cat.includes('storm') || cat.includes('cyclone')) return '#0dcaf0';
+            if (cat.includes('volcano')) return '#6f42c1';
+            if (cat.includes('flood')) return '#198754';
+            return '#6c757d';
+        }
+
+        function getAlertClass(cat) {
+            cat = cat.toLowerCase();
+            if (cat.includes('earthquake')) return 'earthquake';
+            if (cat.includes('fire')) return 'fire';
+            if (cat.includes('storm') || cat.includes('cyclone')) return 'storm';
+            if (cat.includes('volcano')) return 'volcano';
+            return 'other';
+        }
+
+        function showToast(text) {
+            let toast = document.getElementById('zoomToast');
+            toast.textContent = text;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        async function smartZoom(results) {
+            if (results.length === 0) return;
+
+            // Ensure map container is sized correctly before starting
+            map.invalidateSize();
+
+            let allCountries = results.every(r => r.table === 'Country');
+            if (allCountries) {
+                if (results.length === 1) {
+                    map.flyTo([results[0].latitude, results[0].longitude], 5, { duration: 2.0, easeLinearity: 0.25 });
+                    showToast(results[0].canonical_name);
+                } else {
+                    let bounds = L.latLngBounds(results.map(r => [r.latitude, r.longitude]));
+                    map.flyToBounds(bounds, { padding: [60, 60], duration: 2.0 });
+                }
+                return;
+            }
+
+            for (let i = 0; i < results.length; i++) {
+                let r = results[i];
+                let zoom = zoomLevels[r.table] || 10;
+                showToast(r.canonical_name);
+                map.flyTo([r.latitude, r.longitude], zoom, { 
+                    duration: 2.0,
+                    easeLinearity: 0.25,
+                    noMoveStart: true
+                });
+
+                if (i < results.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+            }
+
+            if (results.length > 1) {
+                await new Promise(resolve => setTimeout(resolve, 2500));
+                let bounds = L.latLngBounds(results.map(r => [r.latitude, r.longitude]));
+                map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+            }
+        }
+
+        async function parse() {
+            const sentence = document.getElementById("sentence").value.trim();
+            if (!sentence) return;
+
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("results").innerHTML = "";
+            document.getElementById("alertsSection").style.display = "none";
+            document.getElementById("weatherSection").style.display = "none";
+            document.getElementById("indiaSection").style.display = "none";
+            clearMarkers();
+            clearAlertMarkers();
+            clearWeatherMarkers();
+            clearIndiaMarkers();
+
+            try {
+                const res = await fetch("/parse", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ sentence })
+                });
+                const data = await res.json();
+                document.getElementById("loading").style.display = "none";
+
+                const container = document.getElementById("results");
+                if (!data.results || !data.results.length) {
+                    container.innerHTML = `<div class="no-match">No place names found</div>`;
+                    return;
+                }
+
+                container.innerHTML = `<p class="results-header">Found ${data.count} place${data.count > 1 ? "s" : ""}</p>` +
+                    data.results.map((r, i) => `
+                <div class="result-item" onclick="flyToPlace(${r.latitude}, ${r.longitude}, '${r.table}', '${r.canonical_name}')">
+                    <span class="token-text">${r.token}</span>
+                    <span class="arrow">→</span>
+                    <div style="flex:1;">
+                        <div class="canonical">${r.canonical_name}</div>
+                        <div class="coords-text">${r.latitude}°, ${r.longitude}°</div>
+                    </div>
+                    <span class="table-badge ${r.table}">${r.table}</span>
+                </div>
+            `).join("");
+
+
+                addPlaceMarkers(data.results);
+
+
+                smartZoom(data.results);
+
+
+                fetchAllAlerts(data.results);
+
+
+                fetchWeatherAlerts(data.results);
+
+
+                fetchNearbyWeather(data.results);
+
+            } catch (err) {
+                document.getElementById("loading").style.display = "none";
+                document.getElementById("results").innerHTML = `<div class="no-match">Error: ${err.message}</div>`;
+            }
+        }
+
+        function flyToPlace(lat, lng, table, name) {
+            let zoom = zoomLevels[table] || 10;
+            map.flyTo([lat, lng], zoom, { duration: 1.2 });
+            showToast(name);
+        }
+
+        function addPlaceMarkers(results) {
+            results.forEach(r => {
+                let color = placeColors[r.table] || '#666';
+                let size = r.table === 'Country' ? 18 : (r.table === 'State' ? 16 : 14);
+
+                let marker = L.marker([r.latitude, r.longitude], {
+                    icon: createPinIcon(color, size)
+                }).bindPopup(`
+            <div style="font-size:13px; min-width:120px;">
+                <strong>${r.canonical_name}</strong><br>
+                <span style="color:#888; font-size:11px;">${r.table}</span><br>
+                <span style="font-size:11px;">${r.latitude}°, ${r.longitude}°</span><br>
+                <span style="font-size:11px;">Confidence: ${r.confidence}%</span>
+            </div>
+        `).addTo(map);
+
+                markers.push(marker);
+            });
+        }
+
+        async function fetchAllAlerts(results) {
+            document.getElementById("alertsSection").style.display = "block";
+            document.getElementById("alertsList").innerHTML = `<div class="no-alerts">Loading alerts...</div>`;
+
+            let allAlerts = [];
+            for (let r of results) {
+                try {
+                    let res = await fetch("/alerts", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ latitude: r.latitude, longitude: r.longitude, place_name: r.canonical_name })
+                    });
+                    let data = await res.json();
+                    if (data.alerts) {
+                        data.alerts.forEach(a => { a.near_place = r.canonical_name; allAlerts.push(a); });
+                    }
+                } catch (e) { console.error("Alert fetch error:", e); }
+            }
+
+
+            let seen = new Set();
+            allAlerts = allAlerts.filter(a => { if (seen.has(a.title)) return false; seen.add(a.title); return true; });
+            allAlerts.sort((a, b) => a.distance_km - b.distance_km);
+
+            let list = document.getElementById("alertsList");
+            if (allAlerts.length === 0) {
+                list.innerHTML = `<div class="no-alerts">No active alerts within 500 km</div>`;
+                return;
+            }
+
+            list.innerHTML = allAlerts.map(a => `
+        <div class="alert-item ${getAlertClass(a.category)}">
+            <div class="alert-title">${a.title}</div>
+            <div class="alert-meta">
+                <span>${a.category}</span>
+                <span>${a.distance_km} km from ${a.near_place}</span>
+                <span>${a.source}</span>
+            </div>
+            ${a.date ? `<div class="alert-meta">${a.date}</div>` : ''}
+        </div>
+    `).join("");
+
+
+            allAlerts.forEach(a => {
+                let m = L.marker([a.latitude, a.longitude], { icon: createAlertIcon(getAlertColor(a.category)) })
+                    .bindPopup(`<div style="font-size:12px;"><strong>${a.title}</strong><br><span style="color:#888;">${a.category} • ${a.source}</span><br>${a.distance_km} km from ${a.near_place}</div>`)
+                    .addTo(map);
+                alertMarkers.push(m);
+            });
+        }
+
+        function toggleAlerts() {
+            let c = document.getElementById("alertsContent");
+            let t = document.getElementById("alertsToggle");
+            c.style.display = c.style.display === "none" ? "block" : "none";
+            t.textContent = c.style.display === "none" ? "▶" : "▼";
+        }
+
+        function clearMarkers() { markers.forEach(m => map.removeLayer(m)); markers = []; }
+        function clearAlertMarkers() { alertMarkers.forEach(m => map.removeLayer(m)); alertMarkers = []; }
+        function clearWeatherMarkers() { weatherMarkers.forEach(m => map.removeLayer(m)); weatherMarkers = []; }
+        function clearIndiaMarkers() { indiaMarkers.forEach(m => map.removeLayer(m)); indiaMarkers = []; }
+
+
+        function createWeatherAlertIcon(severity, size) {
+            size = size || 14;
+            return L.divIcon({
+                html: `<div class="weather-alert-dot sev-${severity}" style="width:${size}px;height:${size}px;"></div>`,
+                iconSize: [size, size], iconAnchor: [size / 2, size / 2], className: ''
+            });
+        }
+
+
+        async function fetchWeatherAlerts(results) {
+            document.getElementById('weatherSection').style.display = 'block';
+            document.getElementById('weatherList').innerHTML = '<div style="text-align:center;color:#999;font-size:11px;padding:8px">Checking weather...</div>';
+            clearWeatherMarkers();
+
+            let allAlerts = [];
+            for (let r of results) {
+                try {
+                    let res = await fetch('/weather-alerts', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude: r.latitude, longitude: r.longitude, place_name: r.canonical_name })
+                    });
+                    let data = await res.json();
+                    if (data.success && data.alerts) {
+                        data.alerts.forEach(a => allAlerts.push(a));
+                    }
+
+                    if (data.success && data.current_weather) {
+                        let w = data.current_weather;
+                        addWeatherPopup(r.latitude, r.longitude, r.canonical_name, w, data.highest_severity);
+                    }
+                } catch (e) { console.error('Weather fetch error:', e); }
+            }
+
+            let list = document.getElementById('weatherList');
+            if (allAlerts.length === 0) {
+                list.innerHTML = '<div class="wx-no-alerts"> No severe weather alerts for searched regions</div>';
+                return;
+            }
+
+            list.innerHTML = allAlerts.map(a => `
+        <div class="wx-alert-item sev-${a.severity}" onclick="map.flyTo([${a.latitude},${a.longitude}],10,{duration:1.2})">
+            <div class="wx-alert-title"><span class="sev-badge ${a.severity}">${a.severity.toUpperCase()}</span>${a.type}</div>
+            <div class="wx-alert-desc">${a.description}</div>
+            <div class="wx-alert-place">${a.place}</div>
+        </div>
+    `).join('');
+        }
+
+        function addWeatherPopup(lat, lon, name, weather, severity) {
+            if (!severity) return;
+            let size = severity === 'red' ? 18 : (severity === 'orange' ? 14 : 10);
+            let m = L.marker([lat, lon], { icon: createWeatherAlertIcon(severity, size) })
+                .bindPopup(`<div style="font-size:12px;min-width:140px">
+            <strong>${name}</strong><br>
+            <span style="font-size:18px;font-weight:700">${weather.temperature}°C</span>
+            <span style="color:#888;font-size:11px">Feels ${weather.feels_like}°C</span><br>
+            <span style="font-size:11px">${weather.weather_description}</span><br>
+            <span style="font-size:10px;color:#666">💨 ${weather.wind_speed} km/h · 💧 ${weather.humidity}%</span>
+            ${severity === 'red' ? '<br><span style="color:#dc3545;font-weight:700;font-size:11px">🔴 RED ALERT — DANGER</span>' : ''}
+            ${severity === 'orange' ? '<br><span style="color:#fd7e14;font-weight:600;font-size:11px">🟠 WARNING</span>' : ''}
+        </div>`)
+                .addTo(map);
+            weatherMarkers.push(m);
+        }
+
+
+        async function fetchNearbyWeather(results) {
+            clearIndiaMarkers();
+            if (!results.length) return;
+
+
+            let allStations = new Map();
+            let allAlerts = [];
+            let isIndiaSearch = false;
+
+            for (let r of results) {
+                try {
+                    let res = await fetch('/nearby-weather', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude: r.latitude, longitude: r.longitude, place_name: r.canonical_name })
+                    });
+                    let data = await res.json();
+                    if (!data.success) continue;
+                    if (data.is_india) isIndiaSearch = true;
+
+                    if (data.stations) {
+                        data.stations.forEach(s => { if (!allStations.has(s.name)) allStations.set(s.name, s); });
+                    }
+                    if (data.alerts) {
+                        data.alerts.forEach(a => {
+                            if (!allAlerts.find(x => x.place === a.place && x.type === a.type)) allAlerts.push(a);
+                        });
+                    }
+                } catch (e) { console.error('Nearby weather error:', e); }
+            }
+
+            let stations = Array.from(allStations.values());
+            if (stations.length === 0 && allAlerts.length === 0) return;
+
+            document.getElementById('indiaSection').style.display = 'block';
+            document.getElementById('indiaBadge').style.display = isIndiaSearch ? 'inline-block' : 'none';
+
+            let html = '';
+
+            if (allAlerts.length > 0) {
+                html += allAlerts.map(a => `
+            <div class="wx-alert-item sev-${a.severity}" onclick="map.flyTo([${a.latitude},${a.longitude}],10,{duration:1.2})">
+                <div class="wx-alert-title"><span class="sev-badge ${a.severity}">${a.severity.toUpperCase()}</span>${a.type}</div>
+                <div class="wx-alert-desc">${a.description}</div>
+                <div class="wx-alert-place">${a.place} · ${a.region || ''} · ${a.distance_km || ''}km away</div>
+            </div>
+        `).join('');
+            }
+
+            if (stations.length > 0) {
+                html += '<div style="margin-top:6px;font-size:10px;color:#999;font-weight:600;margin-bottom:3px">NEARBY STATIONS (' + stations.length + ')</div>';
+                html += stations.map(s => {
+                    let sevDot = s.severity ? `<span class="sev-badge ${s.severity}">${s.alert_count}</span>` : '<span style="color:#16a34a;font-size:9px">✓</span>';
+                    return `<div class="wx-station" onclick="map.flyTo([${s.lat},${s.lon}],10,{duration:1.2})" style="cursor:pointer">
+                <div><span class="city">${s.name}</span> <span class="desc">${s.region} · ${s.distance_km}km</span></div>
+                <div>${sevDot} <span class="temp">${s.weather.temperature}°C</span></div>
+            </div>`;
+                }).join('');
+
+
+                stations.forEach(s => {
+                    if (s.severity) {
+                        let sz = s.severity === 'red' ? 16 : (s.severity === 'orange' ? 12 : 8);
+                        let m = L.marker([s.lat, s.lon], { icon: createWeatherAlertIcon(s.severity, sz) })
+                            .bindPopup(`<div style="font-size:12px"><strong>${s.name}</strong> <span style="color:#888;font-size:10px">${s.distance_km}km away</span><br>${s.weather.temperature}°C · ${s.weather.weather_description}<br><span style="color:#dc3545;font-weight:600">${s.alert_count} alert(s)</span></div>`)
+                            .addTo(map);
+                        indiaMarkers.push(m);
+                    }
+                });
+            }
+
+            if (!html) html = '<div class="wx-no-alerts">No severe weather nearby</div>';
+            document.getElementById('indiaList').innerHTML = html;
+        }
+
+        function toggleWeather() {
+            let c = document.getElementById('weatherContent');
+            let t = document.getElementById('weatherToggle');
+            c.style.display = c.style.display === 'none' ? 'block' : 'none';
+            t.textContent = c.style.display === 'none' ? '▶' : '▼';
+        }
+        function toggleIndia() {
+            let c = document.getElementById('indiaContent');
+            let t = document.getElementById('indiaToggle');
+            c.style.display = c.style.display === 'none' ? 'block' : 'none';
+            t.textContent = c.style.display === 'none' ? '▶' : '▼';
+        }
+
+        function setEx(el) { document.getElementById('sentence').value = el.textContent; parse(); }
+
+        window.addEventListener('load', () => { setTimeout(() => parse(), 500); });
+    </script>
+</body>
+
+</html>
