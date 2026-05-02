@@ -826,8 +826,6 @@
 
         async function smartZoom(results) {
             if (results.length === 0) return;
-
-            // Ensure map container is sized correctly before starting
             map.invalidateSize();
 
             let allCountries = results.every(r => r.table === 'Country');
