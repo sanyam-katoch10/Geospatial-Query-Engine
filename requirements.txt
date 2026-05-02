@@ -1,4 +1,4 @@
 flask
 rapidfuzz
 spacy
-numpy
+requests
